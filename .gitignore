@@ -13,3 +13,5 @@ build/
 .pytest_cache/
 .cursorrules
 .cursor/
+.agent/
+.agents/
