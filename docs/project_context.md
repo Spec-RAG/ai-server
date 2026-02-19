@@ -7,7 +7,7 @@ To build a chatbot server using FastAPI and LangChain that can answer questions 
 - **Language**: Python 3.10+
 - **Web Framework**: FastAPI
 - **LLM Orchestration**: LangChain
-- **LLM Provider**: OpenAI (GPT-3.5/4)
+- **LLM Provider**: Google Gemini / OpenAI (GPT-3.5/4)
 - **Configuration**: Pydantic Settings
 - **Server**: Uvicorn
 
@@ -31,5 +31,6 @@ The project follows a standard service-layer architecture:
 ## Environment Variables
 Required environment variables in `.env`:
 - `OPENAI_API_KEY`: API key for OpenAI.
+- `GEMINI_API_KEY`: API key for Google Gemini.
 - `PROJECT_NAME`: Name of the project.
 - `API_STR`: API prefix (default: `/api`).
