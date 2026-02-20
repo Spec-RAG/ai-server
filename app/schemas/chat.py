@@ -1,9 +1,10 @@
+from typing import Literal
 from pydantic import BaseModel
 from typing import List, Optional
 
 
 class HistoryMessage(BaseModel):
-    role: str  # "human" or "ai"
+    role: Literal["human", "ai"]
     content: str
 
 

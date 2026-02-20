@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     GEMINI_CHAT_MODEL: str = "gemini-3-flash-preview"
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str = "spring-docs"
-    PINECONE_NAMESPACE: str 
+    PINECONE_NAMESPACE: str
     PINECONE_TOP_K: int = 4
 
     model_config = SettingsConfigDict(env_file=".env")

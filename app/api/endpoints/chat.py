@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, ChatResponse, RagResponse
 from app.services.example import get_answer
-from app.services.rag_chain import get_rag_answer, get_rag_answer_stream_with_sources_async
+from app.services.rag_chain import get_rag_answer_async, get_rag_answer_stream_with_sources_async
 import json
 
 router = APIRouter()
