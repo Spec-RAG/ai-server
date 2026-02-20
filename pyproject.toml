@@ -9,6 +9,7 @@ dependencies = [
     "langchain>=1.2.10",
     "langchain-community>=0.4.1",
     "langchain-openai>=1.1.10",
+    "pinecone>=8.1.0",
     "pydantic-settings>=2.13.0",
     "python-dotenv>=1.2.1",
     "uvicorn>=0.41.0",
