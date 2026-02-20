@@ -5,9 +5,12 @@ class Settings(BaseSettings):
     API_STR: str = "/api"
     # OPENAI_API_KEY: str
     GEMINI_API_KEY: str
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    GEMINI_CHAT_MODEL: str = "gemini-3-flash-preview"
     PINECONE_API_KEY: str
     PINECONE_INDEX_NAME: str = "spring-docs"
     PINECONE_NAMESPACE: str 
+    PINECONE_TOP_K: int = 4
 
     model_config = SettingsConfigDict(env_file=".env")
 

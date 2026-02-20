@@ -14,7 +14,7 @@ async def chat(request: ChatRequest):
 
 @router.post("/rag", response_model=RagResponse)
 async def rag_chat(request: ChatRequest):
-    result = get_rag_answer(request.message, request.history)
+    result = await get_rag_answer_async(request.message, request.history)
     return RagResponse(**result)
 
 @router.post("/rag/stream")

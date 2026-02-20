@@ -20,7 +20,7 @@ _vectorstore: PineconeVectorStore | None = None
 
 def _get_embeddings() -> GoogleGenerativeAIEmbeddings:
     return GoogleGenerativeAIEmbeddings(
-        model="gemini-embedding-001",
+        model=settings.GEMINI_EMBEDDING_MODEL,
         google_api_key=settings.GEMINI_API_KEY,
     )
 
@@ -61,7 +61,7 @@ def _format_docs(docs: List[Document]) -> str:
     return "\n\n---\n\n".join(f"[{i}] {doc.page_content}" for i, doc in enumerate(docs, 1))
 
 
-def _build_history_messages(history: list) -> list:
+def _build_history_messages(history: List["HistoryMessage"]) -> list:
     """Convert HistoryMessage list to LangChain HumanMessage/AIMessage objects."""
     messages = []
     for h in history:
@@ -76,7 +76,7 @@ def _build_history_messages(history: list) -> list:
 
 def _build_rag_prompt_and_llm():
     llm = ChatGoogleGenerativeAI(
-        model="gemini-3-flash-preview",
+        model=settings.GEMINI_CHAT_MODEL,
         google_api_key=settings.GEMINI_API_KEY,
         temperature=0,
     )
@@ -99,7 +99,7 @@ def _build_rag_prompt_and_llm():
 # 3. Public helpers (sync / async / stream)
 # ---------------------------------------------------------------------------
 def get_rag_answer(question: str, history: list = []) -> dict:
-    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
     docs = retriever.invoke(question)
     context = _format_docs(docs)
     history_messages = _build_history_messages(history)
@@ -120,7 +120,7 @@ def get_rag_answer(question: str, history: list = []) -> dict:
 
 
 async def get_rag_answer_async(question: str, history: list = []) -> dict:
-    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
     docs = await retriever.ainvoke(question)
     context = _format_docs(docs)
     history_messages = _build_history_messages(history)
@@ -141,7 +141,7 @@ async def get_rag_answer_async(question: str, history: list = []) -> dict:
 
 
 def get_rag_answer_stream(question: str, history: list = []):
-    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
     docs = retriever.invoke(question)
     context = _format_docs(docs)
     history_messages = _build_history_messages(history)
@@ -153,7 +153,7 @@ def get_rag_answer_stream(question: str, history: list = []):
 
 
 async def get_rag_answer_stream_async(question: str, history: list = []):
-    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
     docs = await retriever.ainvoke(question)
     context = _format_docs(docs)
     history_messages = _build_history_messages(history)
@@ -172,7 +172,7 @@ async def get_rag_answer_stream_with_sources_async(question: str, history: list 
         dict: {"type": "answer", "content": "<full>"}   — 전체 답변 (청크 합산)
         dict: {"type": "sources", "sources": [...]}     — 참고 문서 목록
     """
-    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
     docs = await retriever.ainvoke(question)
     context = _format_docs(docs)
     history_messages = _build_history_messages(history)

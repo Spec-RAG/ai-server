@@ -16,7 +16,7 @@ SPRING_PROJECTS = [
 
 def get_gemini_model():
     return ChatGoogleGenerativeAI(
-        model="gemini-3-pro-preview",
+        model=settings.GEMINI_CHAT_MODEL,
         google_api_key=settings.GEMINI_API_KEY,
         temperature=0
     )
