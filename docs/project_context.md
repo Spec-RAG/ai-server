@@ -26,6 +26,7 @@ The project follows a standard service-layer architecture:
 |--------|------|-------------|
 | POST | `/api/chat/example` | Basic LangChain chain (non-RAG) |
 | POST | `/api/chat/rag` | RAG chain with Pinecone retrieval and source citations |
+| POST | `/api/chat/rag/stream` | RAG chain via SSE streaming (chunk → answer → sources) |
 
 ### Request Schema (`ChatRequest`)
 ```json
@@ -50,6 +51,17 @@ The project follows a standard service-layer architecture:
 ```
 - `answer` 내 문단 끝에 `[n]` 형식으로 참조 문서 번호 표기
 - `sources` 리스트로 각 번호가 어떤 문서를 참조하는지 확인 가능
+
+### SSE Stream 이벤트 형식 (`/rag/stream`)
+```
+data: {"type": "chunk",   "content": "Spring"}          ← 텍스트 청크 (반복)
+data: {"type": "answer",  "content": "Spring Security..."}  ← 전체 답변 (1회)
+data: {"type": "sources", "sources": [...]}              ← 참고 문서 목록 (1회)
+data: [DONE]
+```
+- `chunk`: LLM이 생성하는 텍스트 조각, 화면에 순차적으로 append
+- `answer`: 모든 chunk를 합산한 최종 완성 답변
+- `sources`: `index`, `source_url`, `page_content` 포함
 
 ## Directory Structure
 ```

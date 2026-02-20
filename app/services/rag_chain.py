@@ -162,3 +162,37 @@ async def get_rag_answer_stream_async(question: str, history: list = []):
     chain = prompt | llm | StrOutputParser()
     async for chunk in chain.astream({"context": context, "history": history_messages, "question": question}):
         yield chunk
+
+
+async def get_rag_answer_stream_with_sources_async(question: str, history: list = []):
+    """SSE용 async generator.
+
+    Yields:
+        dict: {"type": "chunk", "content": "<text>"}    — LLM 텍스트 청크
+        dict: {"type": "answer", "content": "<full>"}   — 전체 답변 (청크 합산)
+        dict: {"type": "sources", "sources": [...]}     — 참고 문서 목록
+    """
+    retriever = get_vectorstore().as_retriever(search_kwargs={"k": 4})
+    docs = await retriever.ainvoke(question)
+    context = _format_docs(docs)
+    history_messages = _build_history_messages(history)
+
+    prompt, llm = _build_rag_prompt_and_llm()
+    chain = prompt | llm | StrOutputParser()
+
+    full_answer = ""
+    async for chunk in chain.astream({"context": context, "history": history_messages, "question": question}):
+        full_answer += chunk
+        yield {"type": "chunk", "content": chunk}
+
+    yield {"type": "answer", "content": full_answer}
+
+    sources = [
+        {
+            "index": i,
+            "source_url": doc.metadata.get("source_url", ""),
+            "page_content": doc.page_content,
+        }
+        for i, doc in enumerate(docs, 1)
+    ]
+    yield {"type": "sources", "sources": sources}
