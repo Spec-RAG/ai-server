@@ -5,6 +5,9 @@ class Settings(BaseSettings):
     API_STR: str = "/api"
     # OPENAI_API_KEY: str
     GEMINI_API_KEY: str
+    PINECONE_API_KEY: str
+    PINECONE_INDEX_NAME: str = "spring-docs"
+    PINECONE_NAMESPACE: str 
 
     model_config = SettingsConfigDict(env_file=".env")
 
