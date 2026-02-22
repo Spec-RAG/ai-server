@@ -125,24 +125,21 @@ async def _rewrite_query(question: str, history_messages: list) -> str:
 # ---------------------------------------------------------------------------
 # 3. Public helpers (sync / async / stream)
 # ---------------------------------------------------------------------------
-def get_rag_answer(question: str, history: list = []) -> dict:
+async def get_rag_answer(question: str, history: list = []) -> dict:
     history_messages = _build_history_messages(history)
 
     if history_messages:
-        import asyncio
-        search_query = asyncio.get_event_loop().run_until_complete(
-            _rewrite_query(question, history_messages)
-        ).strip()
+        search_query = (await _rewrite_query(question, history_messages)).strip()
     else:
         search_query = question
 
     retriever = get_vectorstore().as_retriever(search_kwargs={"k": settings.PINECONE_TOP_K})
-    docs = retriever.invoke(search_query)
+    docs = await retriever.ainvoke(search_query)
     context = _format_docs(docs)
 
     prompt, llm = _build_rag_prompt_and_llm()
     chain = prompt | llm | StrOutputParser()
-    answer = chain.invoke({"context": context, "history": history_messages, "question": question})
+    answer = await chain.ainvoke({"context": context, "history": history_messages, "question": question})
 
     sources = [
         {
