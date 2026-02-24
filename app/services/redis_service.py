@@ -1,0 +1,105 @@
+from __future__ import annotations
+
+import hashlib
+import json
+import logging
+import uuid
+from typing import Any
+
+from redis.asyncio import Redis
+from redis.exceptions import RedisError
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+_redis_client: Redis | None = None
+
+
+def get_redis_client() -> Redis:
+    global _redis_client
+    if _redis_client is None:
+        redis_url = getattr(settings, "REDIS_URL", "redis://localhost:6379")
+        _redis_client = Redis.from_url(redis_url, decode_responses=True)
+    return _redis_client
+
+
+def build_qhash(text: str) -> str:
+    payload = (text or "").encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def build_answer_key(pipe_ver: str, qhash: str) -> str:
+    return f"ans:p{pipe_ver}:{qhash}"
+
+
+def build_lock_key(answer_key: str) -> str:
+    return f"lock:{answer_key}"
+
+
+async def get_cached_json(key: str) -> dict[str, Any] | None:
+    try:
+        raw = await get_redis_client().get(key)
+        if raw is None:
+            return None
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+        return None
+    except (RedisError, json.JSONDecodeError, TypeError):
+        logger.exception("[RedisGetError] key=%s", key)
+        return None
+
+
+async def set_cached_json(key: str, value: dict[str, Any], ttl_sec: int) -> None:
+    try:
+        payload = json.dumps(value, ensure_ascii=False)
+        await get_redis_client().set(key, payload, ex=ttl_sec)
+    except RedisError:
+        logger.exception("[RedisSetError] key=%s", key)
+
+
+async def acquire_lock(lock_key: str, lock_ttl_sec: int) -> str | None:
+    token = str(uuid.uuid4())
+    try:
+        ok = await get_redis_client().set(lock_key, token, nx=True, ex=lock_ttl_sec)
+        if ok:
+            return token
+        return None
+    except RedisError:
+        logger.exception("[RedisLockAcquireError] key=%s", lock_key)
+        return None
+
+
+async def release_lock(lock_key: str, token: str) -> None:
+    script = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+else
+  return 0
+end
+"""
+    try:
+        await get_redis_client().eval(script, 1, lock_key, token)
+    except RedisError:
+        logger.exception("[RedisLockReleaseError] key=%s", lock_key)
+
+
+def get_pipe_version() -> str:
+    return str(getattr(settings, "PIPELINE_VERSION", "1"))
+
+
+def get_answer_ttl_sec() -> int:
+    return int(getattr(settings, "ANSWER_CACHE_TTL_SEC", 3600))
+
+
+def get_lock_ttl_sec() -> int:
+    return int(getattr(settings, "CACHE_LOCK_TTL_SEC", 15))
+
+
+def get_lock_wait_ms() -> int:
+    return int(getattr(settings, "CACHE_LOCK_WAIT_MS", 3000))
+
+
+def get_lock_poll_ms() -> int:
+    return int(getattr(settings, "CACHE_LOCK_POLL_MS", 100))
