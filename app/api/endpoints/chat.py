@@ -4,7 +4,7 @@ from app.schemas.chat import ChatRequest, ChatResponse, RagResponse
 from app.services.example import get_answer
 from app.services.rag_cache_processor import get_rag_answer_cached
 from app.services.history_mapper import build_history_messages
-from app.services.query_processor import rewrite_query
+from app.services.query_processor import rewrite_query, resolve_search_query
 from app.services.rag_chain import get_rag_answer_async, get_rag_answer_stream_with_sources_async
 import json
 
@@ -25,7 +25,7 @@ async def rag_chat_cache(request: ChatRequest):
 @router.post("/rag", response_model=RagResponse)
 async def rag_chat_raw(request: ChatRequest):
     history_messages = build_history_messages(request.history)
-    search_query = await rewrite_query(request.message, history_messages)
+    search_query = await resolve_search_query(request.message, history_messages)
     result = await get_rag_answer_async(
         request.message,
         search_query,
@@ -37,7 +37,7 @@ async def rag_chat_raw(request: ChatRequest):
 async def rag_chat_stream(request: ChatRequest):
     async def event_generator():
         history_messages = build_history_messages(request.history)
-        search_query = await rewrite_query(request.message, history_messages)
+        search_query=await resolve_search_query(request.message, history_messages)
 
         async for event in get_rag_answer_stream_with_sources_async(
             request.message,

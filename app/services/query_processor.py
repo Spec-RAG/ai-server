@@ -41,11 +41,15 @@ async def rewrite_query(question: str, history_messages: list) -> str:
 
 async def build_search_query(question: str, history_messages: list) -> str:
     """rewrite + normalize 후 최종 검색용 쿼리 반환."""
-    if history_messages:
-        search_query = (await rewrite_query(question, history_messages)).strip()
-    else:
-        search_query = question
+    search_query = await resolve_search_query(question, history_messages)
 
     normalized = normalize_query(search_query)
     logger.info("[QueryNormalize] raw='%s' normalized='%s'", search_query, normalized)
     return normalized or search_query
+
+
+async def resolve_search_query(question: str, history_messages: list) -> str:
+    """history 유무에 따라 검색용 쿼리(rewrite or 원문)를 결정"""
+    if history_messages:
+        return (await rewrite_query(question, history_messages)).strip()
+    return (question or "").strip()
