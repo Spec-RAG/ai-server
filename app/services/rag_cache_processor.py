@@ -28,16 +28,18 @@ logger = logging.getLogger(__name__)
 async def get_rag_answer_cached(question: str, history: list = []) -> dict:
     history_messages = build_history_messages(history)
     raw_query = (question or "").strip()
+    has_history = bool(history)
 
     pipe_ver = get_pipe_version()
 
-    # 1) 원문 해시 키 조회
+    # 1) 원문 해시 키 조회 (히스토리가 없는 경우에만 안전)
     raw_qhash = build_qhash(raw_query)
     raw_ans_key = build_answer_key(pipe_ver, raw_qhash)
-    cached_raw = await get_cached_json(raw_ans_key)
-    if cached_raw is not None:
-        logger.info("[CacheHit] phase=raw key=%s", raw_ans_key)
-        return cached_raw
+    if not has_history:
+        cached_raw = await get_cached_json(raw_ans_key)
+        if cached_raw is not None:
+            logger.info("[CacheHit] phase=raw key=%s", raw_ans_key)
+            return cached_raw
 
     # 2) canonical(rewrite+normalize) 해시 키 조회
     canonical_query = await build_search_query(raw_query, history_messages)
@@ -66,7 +68,7 @@ async def get_rag_answer_cached(question: str, history: list = []) -> dict:
             # double-cache    
             ttl_sec = get_answer_ttl_sec()
             await set_cached_json(canonical_ans_key, result, ttl_sec)
-            if raw_ans_key != canonical_ans_key:
+            if (not has_history) and raw_ans_key != canonical_ans_key:
                 await set_cached_json(raw_ans_key, result, ttl_sec)
 
             logger.info("[CacheSet] raw_key=%s canonical_key=%s", raw_ans_key, canonical_ans_key)
