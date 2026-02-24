@@ -16,4 +16,6 @@ dependencies = [
     "redis>=5.2.1",
     "uvicorn>=0.41.0",
     "langchain-pinecone>=0.2.0",
+    "tavily-python>=0.7.21",
+    "langchain-tavily>=0.2.17",
 ]
