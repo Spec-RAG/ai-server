@@ -16,6 +16,8 @@ jobs:
         run: |
           chmod +x build-and-save-images.sh
           ./build-and-save-images.sh
+          chmod 644 ai-server-images.tar
+          ls -lh ai-server-images.tar
 
       - name: Create .env file
         env:
@@ -53,11 +55,20 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           script_stop: true
           script: |
+            set -euo pipefail
+
             mkdir -p ai-server-deploy
             cd ai-server-deploy
 
+            echo "=== Load images ==="
             docker load -i ai-server-images.tar
+
+            echo "=== Up ==="
             docker compose up -d --no-build --force-recreate
 
+            echo "=== Status ==="
+            docker compose ps
+
+            echo "=== Cleanup ==="
             rm -f ai-server-images.tar
             docker image prune -f
