@@ -59,6 +59,63 @@ async def set_cached_json(key: str, value: dict[str, Any], ttl_sec: int) -> None
         logger.exception("[RedisSetError] key=%s", key)
 
 
+async def set_cached_json_if_lock_owner_and_release(
+        # 현재 lock token이 내 token 과 일치할때만, 데이터 캐시 저장 및 lock 키 삭제 원자적으로 수행
+    *,
+    lock_key: str,
+    expected_token: str,
+    canonical_key: str,
+    value: dict[str, Any],
+    ttl_sec: int,
+    raw_key: str | None = None,
+) -> bool | None:
+    """
+    Returns:
+      True  -> lock owner matches; cache commit + lock release succeeded
+      False -> lock owner mismatch; no-op
+      None  -> Redis error
+    """
+    script = """
+local current = redis.call('GET', KEYS[1])
+if current ~= ARGV[1] then
+  return 0
+end
+
+redis.call('SET', KEYS[2], ARGV[2], 'EX', tonumber(ARGV[3]))
+
+if ARGV[4] == '1' then
+  redis.call('SET', KEYS[3], ARGV[2], 'EX', tonumber(ARGV[3]))
+end
+
+redis.call('DEL', KEYS[1])
+return 1
+"""
+    payload = json.dumps(value, ensure_ascii=False)
+    write_raw = "1" if raw_key else "0"
+    raw_target = raw_key or canonical_key
+
+    try:
+        result = await get_redis_client().eval(
+            script,
+            3,
+            lock_key,
+            canonical_key,
+            raw_target,
+            expected_token,
+            payload,
+            str(ttl_sec),
+            write_raw,
+        )
+        return bool(int(result))
+    except RedisError:
+        logger.exception(
+            "[RedisAtomicCacheCommitError] lock_key=%s canonical_key=%s",
+            lock_key,
+            canonical_key,
+        )
+        return None
+
+
 async def acquire_lock(lock_key: str, lock_ttl_sec: int) -> str | None:
     token = str(uuid.uuid4())
     try:

@@ -19,7 +19,7 @@ from app.services.redis_service import (
     get_lock_wait_ms,
     get_pipe_version,
     release_lock,
-    set_cached_json,
+    set_cached_json_if_lock_owner_and_release,
 )
 
 logger = logging.getLogger(__name__)
@@ -79,13 +79,25 @@ async def get_rag_answer_cached(question: str, history: list = []) -> dict:
 
             result = await get_rag_answer_async(raw_query, canonical_query, history_messages)
 
-            # double-cache    
+            # double-cache
             ttl_sec = get_answer_ttl_sec()
-            await set_cached_json(canonical_ans_key, result, ttl_sec)
-            if (not has_history) and raw_ans_key != canonical_ans_key:
-                await set_cached_json(raw_ans_key, result, ttl_sec)
+            raw_cache_key = raw_ans_key if (not has_history and raw_ans_key != canonical_ans_key) else None
+            atomic_saved = await set_cached_json_if_lock_owner_and_release(
+                lock_key=lock_key,
+                expected_token=lock_token,
+                canonical_key=canonical_ans_key,
+                value=result,
+                ttl_sec=ttl_sec,
+                raw_key=raw_cache_key,
+            )
 
-            logger.info("[CacheSet] raw_key=%s canonical_key=%s", raw_ans_key, canonical_ans_key)
+            if atomic_saved is True:
+                logger.info("[CacheSetAtomicSuccess] raw_key=%s canonical_key=%s", raw_ans_key, canonical_ans_key)
+            elif atomic_saved is False:
+                logger.info("[CacheSetAtomicSkippedOwnerMismatch] key=%s", canonical_ans_key)
+            else:
+                logger.warning("[CacheSetAtomicError] key=%s", canonical_ans_key)
+
             return result
         finally:
             await release_lock(lock_key, lock_token)
@@ -178,14 +190,26 @@ async def get_rag_answer_cached_singleflight_in_process(question: str, history: 
                 return cached_again
 
             result = await get_rag_answer_async(raw_query, canonical_query, history_messages)
-
-            # double-cache    
+            
+            # double-cache
             ttl_sec = get_answer_ttl_sec()
-            await set_cached_json(canonical_ans_key, result, ttl_sec)
-            if (not has_history) and raw_ans_key != canonical_ans_key:
-                await set_cached_json(raw_ans_key, result, ttl_sec)
+            raw_cache_key = raw_ans_key if (not has_history and raw_ans_key != canonical_ans_key) else None
+            atomic_saved = await set_cached_json_if_lock_owner_and_release(
+                lock_key=lock_key,
+                expected_token=lock_token,
+                canonical_key=canonical_ans_key,
+                value=result,
+                ttl_sec=ttl_sec,
+                raw_key=raw_cache_key,
+            )
 
-            logger.info("[CacheSet] raw_key=%s canonical_key=%s", raw_ans_key, canonical_ans_key)
+            if atomic_saved is True:
+                logger.info("[CacheSetAtomicSuccess] raw_key=%s canonical_key=%s", raw_ans_key, canonical_ans_key)
+            elif atomic_saved is False:
+                logger.info("[CacheSetAtomicSkippedOwnerMismatch] key=%s", canonical_ans_key)
+            else:
+                logger.warning("[CacheSetAtomicError] key=%s", canonical_ans_key)
+
             if not future.done():
                 future.set_result(result)
             return result
