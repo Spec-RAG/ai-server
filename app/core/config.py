@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     PINECONE_INDEX_NAME: str = "spring-docs"
     PINECONE_NAMESPACE: str
     PINECONE_TOP_K: int = 4
+    TAVILY_API_KEY: str | None = None
     REDIS_URL: str = "redis://localhost:6379"
 
     model_config = SettingsConfigDict(env_file=".env")

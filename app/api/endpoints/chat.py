@@ -6,6 +6,7 @@ from app.services.rag_cache_processor import get_rag_answer_cached
 from app.services.history_mapper import build_history_messages
 from app.services.query_processor import rewrite_query, resolve_search_query
 from app.services.rag_chain import get_rag_answer_async, get_rag_answer_stream_with_sources_async
+from app.services.agent_chain import get_agent_answer_stream
 import json
 
 router = APIRouter()
@@ -43,6 +44,28 @@ async def rag_chat_stream(request: ChatRequest):
             request.message,
             search_query,
             history_messages,
+        ):
+            yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.post("/agent/stream")
+async def agent_chat_stream(request: ChatRequest):
+    async def event_generator():
+        history_messages = build_history_messages(request.history)
+        
+        async for event in get_agent_answer_stream(
+            question=request.message,
+            history_messages=history_messages,
         ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
