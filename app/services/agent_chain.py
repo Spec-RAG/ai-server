@@ -48,13 +48,12 @@ def _build_llm_with_tools():
         temperature=0,
     )
     tools = [spring_docs_search]
-    # bind_tools를 통해 LLM이 도구를 인식하고 호출을 결정할 수 있도록 합니다.
     return llm.bind_tools(tools), tools
 
-async def get_tavily_rag_answer_stream_with_sources_async(
-    question: str, search_query: str, history_messages: list=[]
+async def get_agent_answer_stream(
+    question: str, history_messages: list = []
 ) -> AsyncGenerator[dict, None]:
-    """LangChain의 bind_tools를 이용해 순수 Python 루프로 도구 호출과 스트리밍을 구현합니다."""
+    """Agentic streaming implementation that supports tool calls (Tavily Search)."""
     
     llm_with_tools, tools = _build_llm_with_tools()
     tool_map = {tool.name: tool for tool in tools}
@@ -68,26 +67,23 @@ async def get_tavily_rag_answer_stream_with_sources_async(
         "단순한 인사나 검색이 필요 없는 일반적인 대화라면 도구를 사용하지 않고 바로 답변하셔도 됩니다."
     ))
 
-    # LLM에게 전달할 전체 메시지 목록 구성
     messages = [system_prompt] + history_messages + [HumanMessage(content=question)]
     sources_collected = []
     
-    logger.info("🤖 [Model] Processing user request...")
+    logger.info("🤖 [Agent] Processing user request...")
 
-    # 1단계: 모델에게 질문을 전달하여 답변 또는 도구 호출 여부를 결정
+    # 1. Invoke LLM to determine if tool calls are needed
     response: AIMessage = await llm_with_tools.ainvoke(messages)
     messages.append(response)
 
-    # 2단계: 도구 호출(Tool Calls)이 있다면 실행하여 결과를 덧붙이고 다시 모델 호출
+    # 2. Handle Tool Calls
     if response.tool_calls:
         for tool_call in response.tool_calls:
             selected_tool = tool_map[tool_call["name"]]
             
-            # 비동기로 도구 실행
             tool_result = await selected_tool.ainvoke(tool_call["args"])
             
-            # 소스 수집용 (TavilySearch는 dict를 반환하고, 내부에 'results' 리스트를 가집니다)
-            # 기존 TavilySearchResults는 list[dict]를 반환했었음.
+            # Extract results for source collection
             if isinstance(tool_result, dict) and "results" in tool_result:
                 results_list = tool_result["results"]
             elif isinstance(tool_result, list):
@@ -102,16 +98,14 @@ async def get_tavily_rag_answer_stream_with_sources_async(
                     "page_content": doc.get("content", "")[:1000],
                 })
 
-            # 모델에게 도구 실행 결과를 알려주기 위한 메시지 추가
             tool_message = ToolMessage(
                 content=json.dumps(tool_result, ensure_ascii=False),
                 tool_call_id=tool_call["id"]
             )
             messages.append(tool_message)
         
-        # 3단계: 도구 실행 결과(Observation)를 바탕으로 최종 답변을 스트리밍
+        # 3. Stream final answer based on tool results
         full_answer = ""
-        # StrOutputParser를 파이프에 추가하면 안전한 스트링만 넘어옵니다
         final_chain = llm_with_tools | StrOutputParser()
         
         async for chunk_text in final_chain.astream(messages):
@@ -122,7 +116,7 @@ async def get_tavily_rag_answer_stream_with_sources_async(
         yield {"type": "answer", "content": full_answer}
 
     else:
-        # 도구 호출이 필요 없는 경우(단순 인사 등)
+        # direct answer if no tool call needed
         text_content = ""
         if isinstance(response.content, str):
             text_content = response.content
@@ -138,6 +132,6 @@ async def get_tavily_rag_answer_stream_with_sources_async(
         yield {"type": "chunk", "content": text_content}
         yield {"type": "answer", "content": text_content}
 
-    # 수집된 출처 목록 리턴
+    # Yield all collected sources at the end
     yield {"type": "sources", "sources": sources_collected}
-    logger.info("🤖 [Model Stream Completed]")
+    logger.info("🤖 [Agent] Stream completed")
