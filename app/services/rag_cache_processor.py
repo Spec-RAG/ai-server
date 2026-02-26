@@ -28,6 +28,17 @@ _running_map: dict[str, asyncio.Future[dict]] = {}
 _running_map_lock = asyncio.Lock()
 
 
+async def _cleanup_running_entry(running_key: str, future: asyncio.Future[dict]) -> None:
+    await _running_map_lock.acquire()
+    try:
+        current = _running_map.get(running_key)
+        if current is future:
+            _running_map.pop(running_key, None)
+            logger.info("[InFlightCleanup] key=%s action=removed_running_entry", running_key)
+    finally:
+        _running_map_lock.release()
+
+
 async def get_rag_answer_cached(question: str, history: list = []) -> dict:
     history_messages = build_history_messages(history)
     raw_query = (question or "").strip()
@@ -204,12 +215,5 @@ async def get_rag_answer_cached_singleflight_in_process(question: str, history: 
         if lock_token:
             await release_lock(lock_key, lock_token)
 
-        # 8) 요청 종료 시 실행 중 목록에서 반드시 제거
-        await _running_map_lock.acquire()
-        try:
-            current = _running_map.get(running_key)
-            if current is future:
-                _running_map.pop(running_key, None)
-                logger.info("[InFlightCleanup] key=%s action=removed_running_entry", running_key)
-        finally:
-            _running_map_lock.release()
+        # 8) cancellation이 발생해도 cleanup는 완료되도록 보호
+        await asyncio.shield(_cleanup_running_entry(running_key, future))
