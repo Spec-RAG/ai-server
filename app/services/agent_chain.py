@@ -13,6 +13,13 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+_tavily_search_tool = TavilySearch(
+    api_wrapper=TavilySearchAPIWrapper(tavily_api_key=settings.TAVILY_API_KEY),
+    max_results=5,
+    include_raw_content=True,
+    include_domains=["docs.spring.io"],
+)
+
 @tool
 async def spring_docs_search(query: str) -> list[dict]:
     """Search the Spring official documentation (docs.spring.io) for the given query.
@@ -22,13 +29,7 @@ async def spring_docs_search(query: str) -> list[dict]:
     logger.info(f"🤖 [Agent Decision] Calling Tavily Search with query: {search_query}")
 
     try:
-        tavily_tool = TavilySearch(
-            api_wrapper=TavilySearchAPIWrapper(tavily_api_key=settings.TAVILY_API_KEY),
-            max_results=5,
-            include_raw_content=True,
-            include_domains=["docs.spring.io"],
-        )
-        results = await tavily_tool.ainvoke({"query": search_query})
+        results = await _tavily_search_tool.ainvoke({"query": search_query})
         
         if not results:
             logger.info("🤖 [Agent Observation] Tavily Search returned empty results.")
@@ -50,13 +51,13 @@ def _build_llm_with_tools():
     tools = [spring_docs_search]
     return llm.bind_tools(tools), tools
 
+llm_with_tools, tools = _build_llm_with_tools()
+tool_map = {tool.name: tool for tool in tools}
+
 async def get_agent_answer_stream(
     question: str, history_messages: list = []
 ) -> AsyncGenerator[dict, None]:
     """Agentic streaming implementation that supports tool calls (Tavily Search)."""
-    
-    llm_with_tools, tools = _build_llm_with_tools()
-    tool_map = {tool.name: tool for tool in tools}
     
     system_prompt = SystemMessage(content=(
         "당신은 친절한 Spring Projects 전문가 챗봇입니다.\n"
