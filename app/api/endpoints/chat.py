@@ -2,7 +2,10 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, ChatResponse, RagResponse
 from app.services.example import get_answer
-from app.services.rag_cache_processor import get_rag_answer_cached
+from app.services.rag_cache_processor import (
+    get_rag_answer_cached,
+    get_rag_answer_cached_singleflight_in_process,
+)
 from app.services.history_mapper import build_history_messages
 from app.services.query_processor import rewrite_query, resolve_search_query
 from app.services.rag_chain import get_rag_answer_async, get_rag_answer_stream_with_sources_async
@@ -20,6 +23,12 @@ async def chat(request: ChatRequest):
 @router.post("/rag/cache", response_model=RagResponse)
 async def rag_chat_cache(request: ChatRequest):
     result = await get_rag_answer_cached(request.message, request.history)
+    return RagResponse(**result)
+
+
+@router.post("/rag/cache-singleflight-inprocess", response_model=RagResponse)
+async def rag_chat_cache_singleflight_inprocess(request: ChatRequest):
+    result = await get_rag_answer_cached_singleflight_in_process(request.message, request.history)
     return RagResponse(**result)
 
 
