@@ -25,16 +25,31 @@ jobs:
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
           PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+
+          REDIS_URL: ${{ vars.REDIS_URL }}
+          RAG_MAX_CONCURRENCY: ${{ vars.RAG_MAX_CONCURRENCY }}
+          RAG_SEMAPHORE_WAIT_TIMEOUT_SEC: ${{ vars.RAG_SEMAPHORE_WAIT_TIMEOUT_SEC }}
+          RAG_OVERLOAD_RETRY_AFTER_SEC: ${{ vars.RAG_OVERLOAD_RETRY_AFTER_SEC }}
         run: |
+          set -euo pipefail
+
           test -n "${GEMINI_API_KEY}"
           test -n "${PINECONE_API_KEY}"
           test -n "${PINECONE_NAMESPACE}"
+          test -n "${TAVILY_API_KEY}"
 
           {
             echo "GEMINI_API_KEY=${GEMINI_API_KEY}"
             echo "PINECONE_API_KEY=${PINECONE_API_KEY}"
             echo "PINECONE_INDEX_NAME=${PINECONE_INDEX_NAME:-spring-docs}"
             echo "PINECONE_NAMESPACE=${PINECONE_NAMESPACE}"
+            echo "TAVILY_API_KEY=${TAVILY_API_KEY}"
+
+            echo "REDIS_URL=${REDIS_URL:-redis://redis:6379}"
+            echo "RAG_MAX_CONCURRENCY=${RAG_MAX_CONCURRENCY:-16}"
+            echo "RAG_SEMAPHORE_WAIT_TIMEOUT_SEC=${RAG_SEMAPHORE_WAIT_TIMEOUT_SEC:-1.0}"
+            echo "RAG_OVERLOAD_RETRY_AFTER_SEC=${RAG_OVERLOAD_RETRY_AFTER_SEC:-1}"
           } > .env
 
       - name: Copy files to server
