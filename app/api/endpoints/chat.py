@@ -5,6 +5,7 @@ from app.services.example import get_answer
 from app.services.rag_cache_processor import (
     get_rag_answer_cached,
     get_rag_answer_cached_singleflight_in_process,
+    get_rag_answer_cached_singleflight_in_process_with_semaphore,
 )
 from app.services.history_mapper import build_history_messages
 from app.services.query_processor import rewrite_query, resolve_search_query
@@ -29,6 +30,15 @@ async def rag_chat_cache(request: ChatRequest):
 @router.post("/rag/cache-singleflight-inprocess", response_model=RagResponse)
 async def rag_chat_cache_singleflight_inprocess(request: ChatRequest):
     result = await get_rag_answer_cached_singleflight_in_process(request.message, request.history)
+    return RagResponse(**result)
+
+
+@router.post("/rag/cache-singleflight-inprocess-with-semaphore", response_model=RagResponse)
+async def rag_chat_cache_singleflight_inprocess_with_semaphore(request: ChatRequest):
+    result = await get_rag_answer_cached_singleflight_in_process_with_semaphore(
+        request.message,
+        request.history,
+    )
     return RagResponse(**result)
 
 
