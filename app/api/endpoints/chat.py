@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from app.schemas.chat import ChatRequest, ChatResponse, RagResponse
 from app.services.example import get_answer
@@ -10,6 +10,7 @@ from app.services.rag_cache_processor import (
 from app.services.history_mapper import build_history_messages
 from app.services.query_processor import rewrite_query, resolve_search_query
 from app.services.rag_chain import get_rag_answer_async, get_rag_answer_stream_with_sources_async
+from app.services.rag_concurrency import RagOverloadedError, get_rag_retry_after_sec
 from app.services.agent_chain import get_agent_answer_stream
 import json
 
@@ -23,23 +24,47 @@ async def chat(request: ChatRequest):
 
 @router.post("/rag/cache", response_model=RagResponse)
 async def rag_chat_cache(request: ChatRequest):
-    result = await get_rag_answer_cached(request.message, request.history)
-    return RagResponse(**result)
+    try:
+        result = await get_rag_answer_cached(request.message, request.history)
+        return RagResponse(**result)
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": str(get_rag_retry_after_sec())},
+        ) from exc
 
 
 @router.post("/rag/cache-singleflight-inprocess", response_model=RagResponse)
 async def rag_chat_cache_singleflight_inprocess(request: ChatRequest):
-    result = await get_rag_answer_cached_singleflight_in_process(request.message, request.history)
-    return RagResponse(**result)
+    try:
+        result = await get_rag_answer_cached_singleflight_in_process(
+            request.message,
+            request.history,
+        )
+        return RagResponse(**result)
+    except TimeoutError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": str(get_rag_retry_after_sec())},
+        ) from exc
 
 
 @router.post("/rag/cache-singleflight-inprocess-with-semaphore", response_model=RagResponse)
 async def rag_chat_cache_singleflight_inprocess_with_semaphore(request: ChatRequest):
-    result = await get_rag_answer_cached_singleflight_in_process_with_semaphore(
-        request.message,
-        request.history,
-    )
-    return RagResponse(**result)
+    try:
+        result = await get_rag_answer_cached_singleflight_in_process_with_semaphore(
+            request.message,
+            request.history,
+        )
+        return RagResponse(**result)
+    except (TimeoutError, RagOverloadedError) as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": str(get_rag_retry_after_sec())},
+        ) from exc
 
 
 @router.post("/rag", response_model=RagResponse)
