@@ -151,11 +151,11 @@ def get_answer_ttl_sec() -> int:
 
 
 def get_lock_ttl_sec() -> int:
-    return int(getattr(settings, "CACHE_LOCK_TTL_SEC", 15))
+    return int(getattr(settings, "CACHE_LOCK_TTL_SEC", 120))
 
 
 def get_lock_wait_ms() -> int:
-    return int(getattr(settings, "CACHE_LOCK_WAIT_MS", 3000))
+    return int(getattr(settings, "CACHE_LOCK_WAIT_MS", 60000))
 
 
 def get_lock_poll_ms() -> int:

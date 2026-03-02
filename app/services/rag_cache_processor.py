@@ -115,9 +115,7 @@ async def get_rag_answer_cached(question: str, history: list = []) -> dict:
             return cached_wait
         await asyncio.sleep(poll_sec)
 
-    # 최종 fallback (fail-open)
-    logger.info("[CacheBypass] key=%s", canonical_ans_key)
-    return await get_rag_answer_async(raw_query, canonical_query, history_messages)
+    raise TimeoutError(f"cache wait timeout key={canonical_ans_key}")
 
 
 
