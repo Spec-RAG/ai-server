@@ -27,10 +27,10 @@ jobs:
           PINECONE_NAMESPACE: ${{ secrets.PINECONE_NAMESPACE }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
 
-          REDIS_URL: ${{ vars.REDIS_URL }}
-          RAG_MAX_CONCURRENCY: ${{ vars.RAG_MAX_CONCURRENCY }}
-          RAG_SEMAPHORE_WAIT_TIMEOUT_SEC: ${{ vars.RAG_SEMAPHORE_WAIT_TIMEOUT_SEC }}
-          RAG_OVERLOAD_RETRY_AFTER_SEC: ${{ vars.RAG_OVERLOAD_RETRY_AFTER_SEC }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          RAG_MAX_CONCURRENCY: ${{ secrets.RAG_MAX_CONCURRENCY }}
+          RAG_SEMAPHORE_WAIT_TIMEOUT_SEC: ${{ secrets.RAG_SEMAPHORE_WAIT_TIMEOUT_SEC }}
+          RAG_OVERLOAD_RETRY_AFTER_SEC: ${{ secrets.RAG_OVERLOAD_RETRY_AFTER_SEC }}
         run: |
           set -euo pipefail
 
