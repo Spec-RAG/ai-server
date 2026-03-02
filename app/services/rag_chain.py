@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 1. Pinecone Vector Store
 # ---------------------------------------------------------------------------
-_vectorstore: PineconeVectorStore | None = None
-
-
 def _get_embeddings() -> GoogleGenerativeAIEmbeddings:
     return GoogleGenerativeAIEmbeddings(
         model=settings.GEMINI_EMBEDDING_MODEL,
@@ -25,21 +22,16 @@ def _get_embeddings() -> GoogleGenerativeAIEmbeddings:
 
 
 def get_vectorstore() -> PineconeVectorStore:
-    """Return (or lazily create) a PineconeVectorStore connected to the existing index."""
-    global _vectorstore
-    if _vectorstore is not None:
-        return _vectorstore
-
+    """Create a fresh PineconeVectorStore per call to avoid shared async session races."""
     pc = Pinecone(api_key=settings.PINECONE_API_KEY)
     index = pc.Index(settings.PINECONE_INDEX_NAME)
 
-    _vectorstore = PineconeVectorStore(
+    return PineconeVectorStore(
         index=index,
         embedding=_get_embeddings(),
         namespace=settings.PINECONE_NAMESPACE,
         text_key="content",
     )
-    return _vectorstore
 
 
 # ---------------------------------------------------------------------------
