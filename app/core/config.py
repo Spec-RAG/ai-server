@@ -5,6 +5,19 @@ class Settings(BaseSettings):
     API_STR: str = "/api"
     # OPENAI_API_KEY: str
     GEMINI_API_KEY: str
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    GEMINI_CHAT_MODEL: str = "gemini-3-flash-preview"
+    PINECONE_API_KEY: str
+    PINECONE_INDEX_NAME: str = "spring-docs"
+    PINECONE_NAMESPACE: str
+    PINECONE_TOP_K: int = 4
+    TAVILY_API_KEY: str | None = None
+    REDIS_URL: str = "redis://localhost:6379"
+    RAG_MAX_CONCURRENCY: int = 16
+    RAG_SEMAPHORE_WAIT_TIMEOUT_SEC: float = 1.0
+    RAG_OVERLOAD_RETRY_AFTER_SEC: int = 1
+    CACHE_LOCK_TTL_SEC: int = 120
+    CACHE_LOCK_WAIT_MS: int = 60000
 
     model_config = SettingsConfigDict(env_file=".env")
 
