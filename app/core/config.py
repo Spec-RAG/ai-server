@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     RAG_MAX_CONCURRENCY: int = 16
     RAG_SEMAPHORE_WAIT_TIMEOUT_SEC: float = 1.0
     RAG_OVERLOAD_RETRY_AFTER_SEC: int = 1
+    CACHE_LOCK_TTL_SEC: int = 120
+    CACHE_LOCK_WAIT_MS: int = 60000
 
     model_config = SettingsConfigDict(env_file=".env")
 
