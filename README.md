@@ -1,160 +1,138 @@
-# 어슬렁 (Eoseulleong) — AI 여행 추천 웹 서비스
+# SpringDocsAI
 
-> AI 기반 여행 추천 및 일정 생성 플랫폼
-> 사용자의 취향과 입력 정보를 바탕으로 여행지를 추천하고, 개인 맞춤형 여행 계획을 생성하는 웹 서비스입니다.
 
----
+## Overview
 
-## 🚀 Overview
-
-어슬렁은 **AI 추천 시스템과 대화형 인터페이스**를 결합하여
-사용자가 쉽고 빠르게 여행 계획을 세울 수 있도록 돕는 서비스입니다.
-
-화면설계서(https://www.notion.so/2f9136f77e8a803e892bf59cd0dc22aa?v=2f9136f77e8a80d38e9e000ca883d22c&source=copy_link)
-
-API명세서(https://www.notion.so/API-2f4136f77e8a80559f62f50d1aacc770?source=copy_link)
-
-### 핵심 기능
-
-* ✨ AI 기반 여행지 추천
-* 🗺️ 개인 맞춤 여행 일정 생성
-* 🤖 자연어 기반 챗봇 인터페이스
-* 👤 사용자 계정 및 플랜 관리
+SpringDocsAI는 Spring 공식 문서를 기반으로 한국어 질의응답을 제공하는 RAG 서비스입니다.  
+사용자는 Spring Boot, Spring Framework, Spring Data 등 공식 문서에 대해 자연어로 질문할 수 있고, 시스템은 관련 문서를 검색·재정렬한 뒤 근거와 함께 답변을 생성합니다.  
 
 ---
 
-## 🧩 Tech Stack
+## Core Features
 
-### Frontend
-
-* **React + TypeScript**
-* **TanStack Router**
-* **axios + ts-rest**
-* **zod**
-* **TanStack Query (React Query)**
-* **Tailwind CSS**
-* **shadcn/ui**
-* **Vite**
-
-### Architecture
-
-* REST API 기반 클라이언트–서버 구조
-* 상태 관리: React Query 중심의 서버 상태 관리
-* 컴포넌트 기반 UI 아키텍처
-* 재사용 가능한 디자인 시스템 구축
+- Spring 공식 문서 기반 한국어 질의응답
+- 근거 문서 기반 응답 생성
+- 문서 수집, 정제, 청킹, 임베딩 파이프라인 구축
+- 벡터 검색 및 재정렬 기반 RAG 응답 생성
+- 캐시 및 동시성 제어를 통한 요청 최적화
+- MCP 기반 외부 도구 연동 구조 적용
 
 ---
 
-## 🏗️ Frontend Architecture
+## UI/UX
+### 채팅 인터페이스
+<img width="1909" height="920" alt="Image" src="https://github.com/user-attachments/assets/3e8ab87b-2e78-4070-8c21-32929937d449" /></br>
+### 응답 링크 클릭 시 화면
+<img width="1910" height="923" alt="Image" src="https://github.com/user-attachments/assets/f3d4cb94-bb9c-4ae5-aaec-df71cbbdc7d6" />
 
-src/
-├── components/     # 공통 UI 컴포넌트
-├── pages/          # 라우트 기반 페이지
-├── hooks/          # 커스텀 훅
-├── stores/         # 클라이언트 상태 관리
-├── apis/           # API 클라이언트
-└── types/          # 타입 정의
-
-주요 설계 목표:
-
-* 확장 가능한 컴포넌트 구조
-* 명확한 책임 분리
-* 타입 안정성 보장
-* 유지보수 친화적인 코드 구조
 
 ---
 
-## ⚙️ Frontend Engineering Highlights (Architecture & Implementation)
+## Tech Stack
 
-### 1) 계약 기반 API 설계 (ts-rest + Zod)
+### Backend
+- Python
+- FastAPI
 
-프론트–서버 간 계약(Contract)을 **ts-rest**로 정의하고, 요청/응답 스키마는 **Zod**로 검증하여
-**타입 안정성 + 런타임 안정성**을 동시에 확보했습니다.
+### AI / RAG
+- LangChain
+- Gemini
+- Pinecone
 
-- API contract를 단일 소스로 관리 (endpoint, params, body, response schema)
-- DTO 변경 시 컴파일 타임에 영향 범위를 즉시 확인 가능
-- Zod 스키마로 런타임 데이터 shape 방어 (예상치 못한 응답/결측값 대응)
+### Database
+- redis
 
-> 결과: "API 문서/타입/검증"이 분리되지 않고 한 흐름으로 유지되며, 리팩토링 비용이 크게 감소합니다.
+### Infra / Monitoring
+- Docker
+- Prometheus
+- Grafana
+- k6
 
----
-
-### 2) Axios 인스턴스 계층화 + 큐 기반 요청 제어
-
-네트워크 계층을 axios instance로 분리하고, 인증/재발급 시나리오에서 흔히 발생하는
-**동시 요청 폭주 / 토큰 재발급 중복 호출** 문제를 **큐(Queue) 기반**으로 제어했습니다.
-
-- 역할별 axios instance 분리 (일반 API / 인증 전용 / 필요 시 SSE 등)
-- interceptor에서 401/만료 대응 → refresh/reissue 단일화
-- 재발급 진행 중 들어오는 요청은 큐에 적재 후, 재발급 성공 시 순차 재시도
-- 재발급 실패 시 큐 일괄 실패 처리 및 사용자 상태 초기화
-
-> 결과: 인증 경계에서 "한 번만 재발급하고 나머지는 대기"하는 안정적인 네트워크 흐름을 보장합니다.
+### Protocol / Tooling
+- MCP
+- JSON-RPC 2.0
 
 ---
 
-### 3) 서버 상태 관리 전략 (TanStack Query)
 
-서버 상태는 TanStack Query(React Query)로 일원화하여
-캐싱/무효화/재시도/로딩 표현을 예측 가능하게 구성했습니다.
 
-- 도메인 단위 Query Key 네이밍 전략 (`PLAN_QK`, `QK.me()` 등)
-- mutation 성공 시 invalidate/refetch 범위를 명확히 분리
-- keepPreviousData 등으로 리스트 UX 안정화
-- 에러 시 공통 토스트/리다이렉트 정책 적용 (사용자 경험 일관성)
+### Components
 
-> 결과: 화면별로 흩어지는 fetch 로직을 줄이고, "데이터의 생명주기"가 코드로 드러나게 됩니다.
+- AI Server  
+  질문 정규화, 검색어 생성, 벡터 검색, 재정렬, 답변 생성을 담당
 
----
+- Redis  
+  캐시와 동시성 제어를 위한 저장소
 
-### 4) 단계 기반 UX 상태 유지 (sessionStorage + Context Provider)
+- Pinecone  
+  임베딩된 문서 벡터 저장 및 유사도 검색을 담당
 
-추천 플로우(입력 → 추천 결과 → 선택 → 일정 생성)는 페이지 전환이 잦아
-사용자 입력/선택 상태가 쉽게 유실됩니다. 이를 해결하기 위해:
+- Gemini API  
+  질의 재작성, 임베딩 생성, 답변 생성을 담당
 
-- 단계별 입력/선택 상태를 **sessionStorage 기반 store**로 영속화  
-  (새로고침/뒤로가기/재진입에도 UX 유지)
-- 페이지 레이아웃 단위로 **Context Provider**를 두어 단계 흐름에서 필요한 상태/액션을 주입
-- "UI 단계"와 "저장된 상태"를 분리해, 각 화면은 자신의 책임(표현/검증/전환)만 담당
 
-예시(개념):
-- `ModelInputStore` : 지역/기간/예산/취향 등 입력 상태 보존
-- `ModelHistoryStore` : 최근 추천/선택 이력
-- Layout Provider : 현재 단계에서 필요한 핸들러/전환 로직 제공
-
-> 결과: 복잡한 다단계 플로우에서도 상태 유실 없이 자연스러운 전환과 복구가 가능합니다.
 
 ---
 
-### 5) 라우팅 구조 설계 (TanStack Router)
+## Backend Engineering Highlights
 
-TanStack Router의 중첩 라우팅을 활용해,
-단계 플로우와 공통 레이아웃을 분리했습니다.
+### 1. Spring 공식 GitHub 문서 기반 RAG 파이프라인 구축
+- Spring Boot, Spring Framework, Spring Data 공식 GitHub 저장소를 수집 대상으로 선정
+- 공식 문서를 수집하고 검색 가능한 청크 단위로 분할
+- 메타데이터와 함께 임베딩 후 Pinecone에 저장
+- 벡터 검색, 재정렬, 답변 생성으로 이어지는 RAG 파이프라인 구성
+- 결과
+  - Spring 공식 문서 근거 기반의 한국어 질의응답 서비스 구현
+  - 단순 생성형 응답이 아닌 검색 기반 답변 흐름 구축
 
-- Layout(상위)에서 공통 컨텍스트/상태 주입
-- Page(하위)는 화면 단위 책임 유지
-- 라우트 params 기반으로 "플랜 상세/모델 진행" 등 화면을 명확히 구분
+### 2. 다층 캐시 전략으로 반복 질의 비용 절감
+- 동일하거나 유사한 질문에 대해 임베딩, 검색, 생성이 반복 수행되는 구조
+- Answer Cache, Retrieval Cache, Embedding Cache로 캐시 계층 분리
+- canonical query 기반 키를 사용해 질의 표현 차이에도 캐시 재사용 가능하도록 구성
+- 결과
+  - 반복 질의에 대한 외부 API 호출 수와 응답 지연 감소
+  - 고비용 RAG 연산의 중복 실행 완화
 
-> 결과: 화면이 100개 이상으로 확장되더라도 라우트/레이아웃/상태 책임이 흐트러지지 않습니다.
+### 3. Redis 분산락으로 캐시 생성 구간 중복 실행 제어
+- 캐시 미스 상황에서 동일 질문이 동시에 유입되면 동일한 RAG 연산이 중복 수행될 수 있음
+- Redis 기반 분산락을 도입해 동일 키에 대한 캐시 생성 작업을 단일화
+- 결과
+  - 동일 질문 동시 유입 시 중복 생성과 중복 외부 호출 억제
+
+
+### 4. In-Process Singleflight와 세마포어 기반 백프레셔 적용
+- 서로 다른 질문이 동시에 몰리면 분산락만으로는 전체 실행량 폭증을 제어하기 어려움
+- 프로세스 내부에서는 Future 기반 singleflight로 동일 작업 대기를 공유
+- 전체 RAG 실행 구간에는 asyncio.Semaphore를 적용해 동시 실행 상한을 강제
+- 결과
+  - 프로세스 내부 중복 실행을 추가로 감소
+  - 처리 가능한 범위를 넘는 스파이크 요청에서 서버 안정성 확보
+
+### 5. 부하 테스트와 모니터링 기반 병목 분석 체계 구축
+- k6로 동시 요청 수와 arrival rate를 단계적으로 증가시키며 부하 테스트 수행
+- p95, 오류율, 처리량, CPU, 메모리 사용량을 함께 분석
+- Prometheus와 Grafana를 활용해 애플리케이션 및 인프라 지표를 시각화
+- 결과
+  - 병목 구간과 안정 처리 가능 범위를 수치 기반으로 판단
+  - 최적화 전후 차이를 정량적으로 비교할 수 있는 환경 마련
+
+### 6. MCP 기반 외부 도구 연동 구조 적용
+- MCP는 AI 모델과 외부 데이터, 파일, API, 도구를 연결하기 위한 표준 프로토콜
+- LLM과 도구 간 통신 방식을 표준화해 도구별 개별 연동 부담을 줄임
+- JSON-RPC 2.0 기반 요청과 응답 구조를 사용해 도구 목록 조회와 호출 흐름을 구성
+- 클라이언트가 `tools/list`로 사용 가능한 도구와 입력 스키마를 확인하고 `tools/call`로 필요한 도구를 실행하도록 설계
+- 결과
+  - 외부 도구 연동 방식을 표준화해 확장성과 유지보수성 향상
+  - 도구별 입출력 형식을 일관되게 관리할 수 있는 구조 마련
 
 ---
 
-### 6) UI 시스템화 (Tailwind + shadcn/ui + 공통 컴포넌트)
+## Project Structure
 
-디자인 시스템 토큰과 공통 컴포넌트를 기반으로 UI 일관성을 유지했습니다.
-
-- `Column/Row` 같은 레이아웃 컴포넌트로 화면 구조 표준화
-- 공통 Button/Text/Badge/ImageBox 등 재사용 컴포넌트 구축
-- shadcn/ui 기반으로 접근성/인터랙션 품질 확보
-- 로딩/빈 상태/토스트 등 "상태 UI" 패턴 통일
-
-> 결과: 새로운 화면 추가 시 "조립" 중심으로 개발 가능하며, UI 품질이 균일해집니다.
-
----
-
-## 📌 Future Improvements
-
-* 추천 알고리즘 고도화
-* 사용자 경험 개선
-* 성능 최적화
-* 모바일 UX 강화
+```text
+ai-server/
+├── app/                # FastAPI 애플리케이션, API 엔드포인트, RAG 실행 로직
+├── data/               # 수집·가공된 문서 데이터와 임베딩 결과 저장
+├── data_pipeline/      # 문서 수집, 정제, 청킹, 임베딩 파이프라인
+├── docs/               # 프로젝트 문서
+└── docker-compose.yml  # AI 서버와 Redis 인프라 실행 설정
